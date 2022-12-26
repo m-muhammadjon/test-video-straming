@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Stream #</title>
+    <!-- Google Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+
+    <!-- CSS Reset -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+
+    <!-- Milligram CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+
+    <script type="text/javascript" src="https://cdn.metered.ca/sdk/video/1.4.5/sdk.min.js"></script>
+
+</head>
+<body>
+<div class="container">
+    <h1>Stream</h1>
+    <hr>
+    <div class="row">
+        <div class="column">
+            <button id="share-screen">Share Screen</button>
+        </div>
+        <div class="column">
+            <button id="share-microphone">Share Microphone</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="column">
+            <button id="stop-screen-share" class="button-outline">Stop Screen Sharing</button>
+        </div>
+        <div class="column">
+            <button id="stop-microphone" class="button-outline">Stop Microphone</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="column">
+            <h3>Remote Video</h3>
+            <div id="remote-video-container">
+
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="column">
+            <h3>Local Video</h3>
+            <video src="" muted autoplay id="local-video" style="max-width: 800px"></video>
+        </div>
+    </div>
+</div>
+</body>
+
+<script>
+    let url = `ws://${window.location.host}/ws/video-stream/${window.location.pathname.split('/')[2]}/`;
+    const socket = new WebSocket(url);
+    socket.onmessage = function (event) {
+        console.log(event.data);
+    };
+    socket.onclose = function (event) {
+        console.log('Socket is closed. Reconnect will be attempted in 1 second.', event.reason);
+        /*  setTimeout(function () {
+              connect();
+          }, 1000); */
+    };
+
+
+
+    // CAMERA
+
+  const meeting = new Metered.Meeting();
+        (async function() {
+            await meeting.join({
+                roomURL: "yourappname.metered.live/screensharing-demo"
+            });
+        })();
+
+
+        document.getElementById("share-screen").addEventListener("click", async () => {
+            await meeting.startScreenShare();
+        });
+
+        document.getElementById("stop-screen-share").addEventListener("click", async () => {
+            await meeting.stopVideo();
+        });
+
+        document.getElementById("share-microphone").addEventListener("click", async () => {
+            await meeting.startAudio();
+        });
+
+        document.getElementById("stop-microphone").addEventListener("click", async () => {
+            await meeting.stopAudio();
+        });
+
+        meeting.on("localTrackStarted", async (trackItem) => {
+            if (trackItem.type === "video") {
+                const mediaStream = new MediaStream();
+                mediaStream.addTrack(trackItem.track);
+                document.getElementById("local-video").srcObject = mediaStream;
+            }
+        });
+
+
+        meeting.on("localTrackUpdated", async (trackItem) => {
+            if (trackItem.type === "video") {
+                const mediaStream = new MediaStream();
+                mediaStream.addTrack(trackItem.track);
+                document.getElementById("local-video").srcObject = mediaStream;
+            }
+        });
+
+        meeting.on("remoteTrackStarted", async (trackItem) => {
+            console.log('salom')
+            debugger
+            var mediaStream = new MediaStream();
+            mediaStream.addTrack(trackItem.track);
+            var videoTag = document.createElement("video");
+            videoTag.autoplay = true;
+            videoTag.srcObject = mediaStream;
+            videoTag.id = trackItem.streamId;
+            videoTag.style.maxWidth = "1920px";
+            if (trackItem.type === "video") {
+                /**
+                 * If it is a video stream then set it to muted.
+                 * */
+                videoTag.muted = true;
+            } else {
+                videoTag.controls = true;
+            }
+            document.getElementById("remote-video-container").appendChild(videoTag);
+        });
+
+        meeting.on("remoteTrackStopped", async (trackItem) => {
+            document.getElementById(trackItem.streamId).remove();
+        });
+
+    {#setInterval(() => {#}
+    {#    console.log(videoElem.srcObject.getVideoTracks()[0]);#}
+    {#    socket.send(JSON.stringify({"s": videoElem.srcObject}));#}
+    {#}, 1000);#}
+
+
+</script>
+</html>
